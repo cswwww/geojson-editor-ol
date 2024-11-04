@@ -1,12 +1,12 @@
 /*
  * @Date: 2024-11-04 13:46:37
  * @LastEditors: ReBeX  cswwwx@gmail.com
- * @LastEditTime: 2024-11-04 15:56:23
+ * @LastEditTime: 2024-11-04 20:50:04
  * @FilePath: \geojson-editor-ol\src\utils\vectorEditor.js
  * @Description: 矢量编辑相关功能
  */
 
-import { Draw, Modify, Select, Translate } from 'ol/interaction.js'
+import { Draw, Modify, Select, Snap, Translate } from 'ol/interaction.js'
 import { createBox, createRegularPolygon } from 'ol/interaction/Draw.js'
 import { Vector as VectorLayer } from 'ol/layer.js'
 import { Vector as VectorSource } from 'ol/source.js'
@@ -29,6 +29,7 @@ export class VectorEditor {
   _select = null // 选择交互
   _modify = null // 修改交互
   _translate = null // 拖拽交互
+  _snap = null // 吸附交互 | Notice: The snap interaction must be added last, as it needs to be the first to handle the pointermove event.
 
   constructor(map) {
     this.map = map // 引入地图实例
@@ -50,23 +51,32 @@ export class VectorEditor {
     this._translate = new Translate({
       features: this._select.getFeatures(),
     })
+    this._snap = new Snap({ source: this._source }) // 实例化吸附交互
 
     this.map.addInteraction(this._modify)
     this.map.addInteraction(this._select)
     this.map.addInteraction(this._translate)
 
     this.stopDraw()
-    this.watch()
+    this.watch.clearSelected()
   }
 
   // 监听：各类事件
-  watch() {
+  watch = {
     // 事件：选择状态改变时清空已选择的要素
-    this._select.on('change:active', () => {
-      this._select.getFeatures().forEach((item) => {
-        this._select.getFeatures().remove(item)
+    clearSelected: () => {
+      this._select.on('change:active', () => {
+        this._select.getFeatures().forEach((item) => {
+          this._select.getFeatures().remove(item)
+        })
       })
-    })
+    },
+    // 事件：绘制完成时清空已选择的要素
+    drawEnd: () => {
+      this._draw.on('drawend', (event) => {
+        console.log('绘制完成:', event.feature)
+      })
+    },
   }
 
   // 操作：绘制
@@ -94,12 +104,21 @@ export class VectorEditor {
       geometryFunction, // 绘制回调
     })
 
+    // 添加绘制完成的监听器
+    this.watch.drawEnd()
+
     this.map.addInteraction(this._draw)
+    this.map.addInteraction(this._snap)
   }
 
   // 复位：停止绘制
   stopDraw() {
-    this.map.removeInteraction(this._draw)
+    if (this._draw) {
+      this._draw.un('drawend', this.watch.drawEnd) // 先移除事件监听
+      this.map.removeInteraction(this._draw)
+      this._draw = null
+    }
+    this.map.removeInteraction(this._snap)
     this._modify.setActive(false)
     this._select.setActive(false)
     this._translate.setActive(false)
@@ -111,6 +130,7 @@ export class VectorEditor {
 
     this._select.setActive(flag)
     this._modify.setActive(flag)
+    this.map.addInteraction(this._snap)
   }
 
   // 操作：拖拽
@@ -119,5 +139,6 @@ export class VectorEditor {
 
     this._select.setActive(flag)
     this._translate.setActive(flag)
+    this.map.addInteraction(this._snap)
   }
 }

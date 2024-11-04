@@ -11,6 +11,17 @@
 
 ---
 
+## 启动项目
+
+> Node版本建议：v20.16.0 +
+
+```bash
+pnpm install
+pnpm dev
+```
+
+---
+
 ## Blog
 
 1. [【GeoJSON在线编辑平台】（0）项目启动与前言-CSDN博客](https://blog.csdn.net/ReBeX/article/details/143403691)
