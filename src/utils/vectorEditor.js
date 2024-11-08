@@ -1,7 +1,7 @@
 /*
  * @Date: 2024-11-04 13:46:37
  * @LastEditors: ReBeX  cswwwx@gmail.com
- * @LastEditTime: 2024-11-07 18:43:22
+ * @LastEditTime: 2024-11-07 19:18:30
  * @FilePath: \geojson-editor-ol\src\utils\vectorEditor.js
  * @Description: 矢量编辑相关功能
  */
@@ -40,6 +40,7 @@ export class VectorEditor {
   _translate = null // 平移交互
   _snap = null // 吸附交互 | Notice: The snap interaction must be added last, as it needs to be the first to handle the pointermove event.
   _drawHole = null // 挖孔交互
+  _drawExtend = null // 拓展交互
   _selectedFeature = null // 编辑状态下选中的要素
 
   constructor(map) {
@@ -95,9 +96,20 @@ export class VectorEditor {
     // 事件：挖孔交互结束时
     drawHoleEnd: () => {
       this._drawHole.on('drawend', (event) => {
-        const mask = turf.polygon(this._editSource.getFeatures()[0].getGeometry().getCoordinates()) // 被挖区域
+        const mask = turf.polygon(this._editSource.getFeatures()[0].getGeometry().getCoordinates()) // 原矢量
         const polygon = turf.polygon(event.feature.getGeometry().getCoordinates()) // 绘制区域
         const result = new GeoJSON().readFeatures(turf.mask(polygon, mask))
+        this._editSource.clear()
+        this._editSource.addFeatures(result)
+      })
+    },
+    // 事件：拓展交互结束时
+    drawExtendEnd: () => {
+      this._drawExtend.on('drawend', (event) => {
+        const mask = turf.polygon(this._editSource.getFeatures()[0].getGeometry().getCoordinates()) // 原矢量
+        const polygon = turf.polygon(event.feature.getGeometry().getCoordinates()) // 绘制区域
+
+        const result = new GeoJSON().readFeatures(turf.union(turf.featureCollection([polygon, mask])))
         this._editSource.clear()
         this._editSource.addFeatures(result)
       })
@@ -132,6 +144,14 @@ export class VectorEditor {
       this._drawHole.un('drawend', this.watch.drawHoleEnd) // 先移除事件监听
       this.map.removeInteraction(this._drawHole)
       this._drawHole = null
+      this._select.setActive(true)
+      this._vector.setVisible(true) // 显示基础图层
+      this._editSource.clear()
+    }
+    if (this._drawExtend) {
+      this._drawExtend.un('drawend', this.watch.drawExtendEnd) // 先移除事件监听
+      this.map.removeInteraction(this._drawExtend)
+      this._drawExtend = null
       this._select.setActive(true)
       this._vector.setVisible(true) // 显示基础图层
       this._editSource.clear()
@@ -228,6 +248,34 @@ export class VectorEditor {
       this._drawHole.un('drawend', this.watch.drawHoleEnd) // 先移除事件监听
       this.map.removeInteraction(this._drawHole)
       this._drawHole = null
+      this._select.setActive(true)
+    }
+  }
+
+  // 操作：拓展
+  // 所属互斥组：编辑模式组，重置方法 stopMutual
+  extend(flag = true) {
+    if (flag && this._select.getFeatures().getArray().length > 0) { // 开挖
+      this.stopMutual() // 停止互斥交互
+      this._vector.setVisible(false) // 隐藏基础图层
+      this._selectedFeature = this._select.getFeatures().getArray()[0] // 记录选中的要素
+      this._selectedFeature && this._editSource.addFeature(this._selectedFeature)
+      this._select.setActive(false)
+      this._drawExtend = new Draw({
+        source: new VectorSource(),
+        type: 'Polygon',
+      })
+      this.watch.drawExtendEnd() // 添加事件监听
+      this.map.addInteraction(this._drawExtend)
+    }
+    else if (this._drawExtend) { // 停止
+      this._source.removeFeature(this._selectedFeature) // 移除被编辑的要素
+      this._source.addFeature(this._editSource.getFeatures()[0]) // 添加编辑后的要素
+      this._vector.setVisible(true) // 显示基础图层
+      this._editSource.clear()
+      this._drawExtend.un('drawend', this.watch.drawExtendEnd) // 先移除事件监听
+      this.map.removeInteraction(this._drawExtend)
+      this._drawExtend = null
       this._select.setActive(true)
     }
   }

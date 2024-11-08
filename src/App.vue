@@ -1,7 +1,7 @@
 <!--
  * @Date: 2024-10-28 17:43:37
  * @LastEditors: ReBeX  cswwwx@gmail.com
- * @LastEditTime: 2024-11-07 17:40:13
+ * @LastEditTime: 2024-11-08 09:11:30
  * @FilePath: \geojson-editor-ol\src\App.vue
  * @Description: 主页面
 -->
@@ -34,6 +34,7 @@ const editButtons = [ // 操作按钮配置
   { type: 'translate', label: '平移(R)' },
   { type: 'delete', label: '删除' },
   { type: 'cutHole', label: '挖孔(A)' },
+  { type: 'extend', label: '拓展(S)' },
 ]
 
 // 操作：绘制
@@ -65,22 +66,14 @@ function enterEdit() {
 // 操作：编辑状态下的其他操作
 function handleEdit(type) {
   switch (type) {
-    case 'modify':
-      drawVector[type](type !== currentEditType.value)
-      currentEditType.value = type === currentEditType.value ? null : type
-      break
-    case 'translate':
-      drawVector[type](type !== currentEditType.value)
-      currentEditType.value = type === currentEditType.value ? null : type
-      break
-    case 'cutHole':
-      drawVector.cutHole(type !== currentEditType.value)
-      currentEditType.value = type === currentEditType.value ? null : type
-      break
     case 'delete':
       drawVector[type]()
       isEdit.value = false
       currentEditType.value = null
+      break
+    default: // modify | translate | cutHole | extend
+      drawVector[type](type !== currentEditType.value)
+      currentEditType.value = type === currentEditType.value ? null : type
       break
   }
 }
@@ -108,6 +101,11 @@ function keyDown(e) {
     case 'a':
       if (isEdit.value) {
         handleEdit('cutHole')
+      }
+      break
+    case 's':
+      if (isEdit.value) {
+        handleEdit('extend')
       }
       break
   }
