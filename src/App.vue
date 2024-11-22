@@ -1,7 +1,7 @@
 <!--
  * @Date: 2024-10-28 17:43:37
  * @LastEditors: ReBeX  cswwwx@gmail.com
- * @LastEditTime: 2024-11-08 09:11:30
+ * @LastEditTime: 2024-11-08 09:43:21
  * @FilePath: \geojson-editor-ol\src\App.vue
  * @Description: 主页面
 -->
@@ -35,6 +35,7 @@ const editButtons = [ // 操作按钮配置
   { type: 'delete', label: '删除' },
   { type: 'cutHole', label: '挖孔(A)' },
   { type: 'extend', label: '拓展(S)' },
+  { type: 'clip', label: '裁剪(D)' },
 ]
 
 // 操作：绘制
@@ -106,6 +107,11 @@ function keyDown(e) {
     case 's':
       if (isEdit.value) {
         handleEdit('extend')
+      }
+      break
+    case 'd':
+      if (isEdit.value) {
+        handleEdit('clip')
       }
       break
   }
